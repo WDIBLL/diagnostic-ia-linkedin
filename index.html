@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diagnostic IA × LinkedIn · We Do It Better</title>
+  <meta name="description" content="En 3 minutes, découvrez si vous faites partie des 5% qui exploitent vraiment l'IA sur LinkedIn." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Figtree:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind + Chart.js -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #faf7f2;
+      --bg-2: #f1ece3;
+      --ink: #111110;
+      --ink-2: #3a3a36;
+      --muted: #7a746a;
+      --line: #d9d3c6;
+      --accent: #d93f1c;
+      --accent-2: #8a2a12;
+      --gold: #b08a3e;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Figtree', system-ui, sans-serif;
+      font-feature-settings: "ss01", "cv11";
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .font-serif { font-family: 'Fraunces', Georgia, serif; font-feature-settings: "ss01"; }
+    .ink { color: var(--ink); }
+    .muted { color: var(--muted); }
+    .ink-2 { color: var(--ink-2); }
+    .bg-accent { background: var(--accent); }
+    .text-accent { color: var(--accent); }
+    .border-ink { border-color: var(--ink); }
+    .border-line { border-color: var(--line); }
+    .bg-ink { background: var(--ink); }
+    .bg-bg2 { background: var(--bg-2); }
+
+    /* Grain texture */
+    body::before {
+      content: "";
+      position: fixed; inset: 0;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.07  0 0 0 0 0.07  0 0 0 0 0.07  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      opacity: 0.55;
+      mix-blend-mode: multiply;
+      z-index: 1;
+    }
+    main, header, footer { position: relative; z-index: 2; }
+
+    /* Views */
+    .view { display: none; animation: fadeIn .45s ease both; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    /* Option cards */
+    .option {
+      border: 1px solid var(--line);
+      background: #fff;
+      transition: all .18s ease;
+      cursor: pointer;
+    }
+    .option:hover {
+      border-color: var(--ink);
+      transform: translateX(4px);
+      box-shadow: -4px 4px 0 var(--ink);
+    }
+    .option.selected {
+      border-color: var(--accent);
+      background: #fff;
+      box-shadow: -4px 4px 0 var(--accent);
+      transform: translateX(4px);
+    }
+    .option-marker {
+      width: 22px; height: 22px; border: 1.5px solid var(--line); border-radius: 999px;
+      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .option.selected .option-marker {
+      background: var(--accent); border-color: var(--accent);
+    }
+    .option.selected .option-marker::after {
+      content: ""; width: 8px; height: 8px; background: #fff; border-radius: 999px;
+    }
+
+    /* Primary button */
+    .btn-primary {
+      background: var(--ink);
+      color: var(--bg);
+      padding: 14px 24px;
+      border-radius: 999px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      transition: all .2s ease;
+      display: inline-flex; align-items: center; gap: 10px;
+    }
+    .btn-primary:hover {
+      background: var(--accent);
+      transform: translateY(-1px);
+    }
+    .btn-ghost {
+      padding: 12px 20px;
+      border-radius: 999px;
+      font-weight: 500;
+      color: var(--ink-2);
+      transition: color .15s ease;
+    }
+    .btn-ghost:hover { color: var(--accent); }
+
+    /* Progress */
+    .progress-track {
+      height: 2px; background: var(--line); overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%; background: var(--ink); width: 0%;
+      transition: width .5s cubic-bezier(.2,.8,.2,1);
+    }
+
+    /* Tag / label */
+    .eyebrow {
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--muted); font-weight: 500;
+    }
+
+    /* Result score */
+    .score-number {
+      font-family: 'Fraunces', serif;
+      font-weight: 300;
+      font-size: clamp(96px, 18vw, 200px);
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+    }
+
+    /* Divider */
+    .rule { border-top: 1px solid var(--line); }
+
+    /* Levier card */
+    .levier {
+      border: 1px solid var(--line);
+      background: #fff;
+      transition: all .2s ease;
+    }
+    .levier:hover {
+      border-color: var(--ink);
+      box-shadow: -6px 6px 0 var(--ink);
+      transform: translate(3px, -3px);
+    }
+    .levier-num {
+      font-family: 'Fraunces', serif;
+      font-weight: 300;
+      font-size: 56px;
+      line-height: 1;
+      color: var(--accent);
+    }
+
+    /* Ambition bar (visualizes top 5% band) */
+    .ambition-track {
+      height: 10px; background: var(--bg-2);
+      border: 1px solid var(--line);
+      position: relative;
+    }
+    .ambition-marker {
+      position: absolute; top: -6px; bottom: -6px;
+      width: 3px; background: var(--accent);
+    }
+    .ambition-top5 {
+      position: absolute; top: 0; bottom: 0; right: 0;
+      width: 22%; background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(217,63,28,.18) 4px, rgba(217,63,28,.18) 6px);
+    }
+
+    /* Share button */
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid var(--ink);
+      color: var(--ink);
+      padding: 13px 22px;
+      border-radius: 999px;
+      font-weight: 500;
+      transition: all .2s ease;
+    }
+    .btn-outline:hover { background: var(--ink); color: var(--bg); }
+
+    /* Hide scrollbar for cleanliness on questions */
+    html { scroll-behavior: smooth; }
+
+    @media (max-width: 640px) {
+      .score-number { font-size: 104px; }
+      .levier-num { font-size: 48px; }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Header -->
+  <header class="max-w-5xl mx-auto px-6 pt-8 pb-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-ink text-white flex items-center justify-center font-serif italic text-sm">W</div>
+      <span class="font-medium tracking-tight">We Do It Better</span>
+    </div>
+    <a href="https://we-do-it-better.fr" class="text-sm muted hover:text-accent transition-colors">we-do-it-better.fr →</a>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-6 pb-24">
+
+    <!-- ============= VIEW: LANDING ============= -->
+    <section id="view-landing" class="view active pt-12 md:pt-20">
+      <div class="max-w-3xl">
+        <div class="eyebrow mb-6">Diagnostic gratuit · 3 minutes</div>
+
+        <h1 class="font-serif text-5xl md:text-7xl leading-[0.95] tracking-tight mb-8">
+          Êtes-vous dans les
+          <span class="italic text-accent">5 %</span>
+          qui exploitent vraiment l'IA sur LinkedIn&nbsp;?
+        </h1>
+
+        <p class="text-lg md:text-xl ink-2 leading-relaxed max-w-2xl mb-10">
+          90 % des dirigeants B2B utilisent ChatGPT pour leurs posts.
+          Très peu en tirent un vrai résultat. En 11 questions, découvrez votre score,
+          votre profil, et les 3 leviers précis qui vous séparent du top 5 %.
+        </p>
+
+        <div class="flex flex-wrap items-center gap-5 mb-14">
+          <button onclick="startDiagnostic()" class="btn-primary text-base">
+            Démarrer le diagnostic
+            <span>→</span>
+          </button>
+          <span class="text-sm muted">11 questions · Résultat immédiat · Aucune inscription</span>
+        </div>
+
+        <div class="rule pt-8">
+          <div class="eyebrow mb-5">Ce que vous évaluez</div>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-3 text-[15px] ink-2">
+            <div>01 &nbsp; Stratégie &amp; contenu</div>
+            <div>02 &nbsp; Utilisation de l'IA</div>
+            <div>03 &nbsp; Qualité &amp; authenticité</div>
+            <div>04 &nbsp; Optimisation LinkedIn</div>
+            <div>05 &nbsp; Fréquence &amp; régularité</div>
+            <div>06 &nbsp; Mesure &amp; amélioration</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= VIEW: QUESTIONS ============= -->
+    <section id="view-questions" class="view pt-10">
+      <div class="max-w-3xl mx-auto">
+        <!-- Progress -->
+        <div class="flex items-center justify-between mb-3 text-sm">
+          <span class="eyebrow">Question <span id="q-current">1</span> / <span id="q-total">10</span></span>
+          <span class="muted" id="q-axe-label">Stratégie</span>
+        </div>
+        <div class="progress-track mb-14">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+
+        <!-- Question -->
+        <h2 id="q-text" class="font-serif text-3xl md:text-4xl leading-tight tracking-tight mb-10">…</h2>
+
+        <div id="q-options" class="space-y-3"></div>
+
+        <div class="mt-10 flex items-center justify-between">
+          <button onclick="goBack()" id="btn-back" class="btn-ghost text-sm">← Retour</button>
+          <span class="text-xs muted">Cliquez une réponse pour continuer</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= VIEW: RESULTS ============= -->
+    <section id="view-results" class="view pt-10">
+      <div class="max-w-5xl mx-auto">
+
+        <div class="eyebrow mb-4">Votre diagnostic</div>
+
+        <!-- Score block -->
+        <div class="grid md:grid-cols-[1fr_1.2fr] gap-10 md:gap-16 items-center mb-16">
+          <div>
+            <div class="flex items-end gap-2">
+              <span class="score-number" id="score-number">0</span>
+              <span class="font-serif text-3xl muted mb-6">%</span>
+            </div>
+            <div class="mt-2 text-sm muted">de maîtrise IA × LinkedIn</div>
+          </div>
+
+          <div>
+            <div class="eyebrow mb-2" id="profile-eyebrow">Profil</div>
+            <h2 id="profile-title" class="font-serif text-4xl md:text-5xl leading-tight tracking-tight mb-4">…</h2>
+            <p id="profile-verdict" class="text-lg ink-2 leading-relaxed mb-6">…</p>
+
+            <!-- Ambition bar -->
+            <div class="mb-2 text-xs uppercase tracking-widest muted flex justify-between">
+              <span>Vous</span><span>Top 5 %</span>
+            </div>
+            <div class="ambition-track">
+              <div class="ambition-top5"></div>
+              <div class="ambition-marker" id="ambition-marker" style="left: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Radar + axes breakdown -->
+        <div class="grid md:grid-cols-[1fr_1fr] gap-10 md:gap-16 items-center mb-16 rule pt-12">
+          <div>
+            <div class="eyebrow mb-3">Votre profil sur 6 axes</div>
+            <h3 class="font-serif text-2xl md:text-3xl leading-tight tracking-tight mb-4">
+              Là où vous êtes fort. Là où tout reste à faire.
+            </h3>
+            <p class="ink-2 leading-relaxed">
+              Chaque axe est noté de 0 à 3. Les creux du graphique sont vos vraies
+              opportunités : ce sont les points sur lesquels 3 décisions vont débloquer
+              plus de résultat que tout le reste.
+            </p>
+          </div>
+          <div class="bg-white border border-line p-5">
+            <canvas id="radar-chart" height="320"></canvas>
+          </div>
+        </div>
+
+        <!-- Top 3 leviers -->
+        <div class="mb-16">
+          <div class="eyebrow mb-3">Vos 3 leviers prioritaires</div>
+          <h3 class="font-serif text-3xl md:text-4xl leading-tight tracking-tight mb-8 max-w-2xl">
+            Ce sur quoi travailler <span class="italic text-accent">en premier</span>.
+          </h3>
+          <div id="leviers" class="grid md:grid-cols-3 gap-5"></div>
+        </div>
+
+        <!-- CTA block -->
+        <div class="rule pt-12">
+          <div class="bg-ink text-white p-8 md:p-12">
+            <div class="max-w-2xl">
+              <div class="eyebrow" style="color: #b9b5ab;">L'étape d'après</div>
+              <h3 class="font-serif text-3xl md:text-4xl leading-tight tracking-tight mt-3 mb-5">
+                Voir ses leviers, c'est bien. Les <em class="italic text-accent">activer en 30 jours</em>, c'est mieux.
+              </h3>
+              <p class="text-[17px] leading-relaxed mb-7" style="color: #d9d3c6;">
+                On travaille exclusivement avec Claude, que nous considérons comme l'IA la plus précise pour l'écriture B2B aujourd'hui. Et on ne se contente pas de vous livrer un prompt ou un document. On s'assoit avec vous, on comprend votre marque de fond en comble, et on construit tout : un Project Claude nourri de votre identité, une bibliothèque d'instructions pour chaque format de post, un calendrier éditorial programmé, un tableau de mesure. Puis on forme votre équipe pour qu'elle reprenne la main. En 30 jours, votre système tourne seul. Et vous savez enfin ce qui marche.
+              </p>
+              <div class="flex flex-wrap gap-4">
+                <a href="https://we-do-it-better.fr" class="btn-primary" style="background: var(--accent); color: #fff;">
+                  Demander un audit approfondi
+                  <span>→</span>
+                </a>
+                <a href="mailto:sebastien.t@we-do-it.fr?subject=Diagnostic%20IA%20LinkedIn%20-%20Je%20veux%20en%20parler" class="btn-outline" style="border-color: #fff; color: #fff;">
+                  Écrire à Sébastien
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between mt-10">
+          <button onclick="restartDiagnostic()" class="btn-ghost text-sm">↺ Recommencer le diagnostic</button>
+          <button onclick="shareResult()" class="btn-ghost text-sm">Partager mon score</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="max-w-5xl mx-auto px-6 pb-10 text-xs muted flex items-center justify-between">
+    <span>© 2026 We Do It Better</span>
+    <a href="mailto:sebastien.t@we-do-it.fr" class="hover:text-accent">sebastien.t@we-do-it.fr</a>
+  </footer>
+
+  <script>
+  /* =========================================================
+     DATA
+  ========================================================= */
+
+  const AXES = ["Stratégie", "Outils IA", "Qualité", "Format", "Fréquence", "Mesure"];
+
+  const QUESTIONS = [
+    {
+      axe: "Stratégie",
+      text: "Avez-vous documenté votre identité (client idéal, ton de voix, sujets récurrents) dans un endroit que l'IA peut réutiliser à chaque post ?",
+      options: [
+        { label: "Non, je repars de zéro à chaque fois", score: 0 },
+        { label: "J'ai un prompt basique que je copie-colle parfois", score: 1 },
+        { label: "J'ai un document détaillé, mais rarement mis à jour", score: 2 },
+        { label: "Oui, un assistant IA personnalisé tenu à jour (GPT, Project, Gem…)", score: 3 }
+      ]
+    },
+    {
+      axe: "Outils IA",
+      text: "Quel(s) outil(s) IA utilisez-vous pour produire vos posts ?",
+      options: [
+        { label: "Version gratuite d'un seul outil (ChatGPT, Gemini, Claude, Mistral, Copilot…)", score: 0 },
+        { label: "Version payante d'un outil généraliste (ChatGPT Plus, Claude Pro, Gemini Advanced, Perplexity Pro…)", score: 1 },
+        { label: "Plusieurs outils IA combinés + un outil dédié LinkedIn (Taplio, Magic Post, Waalaxy…)", score: 2 },
+        { label: "Stack sur mesure : assistants personnalisés, outils spécialisés, recherche documentée", score: 3 }
+      ]
+    },
+    {
+      axe: "Outils IA",
+      text: "Avez-vous créé vos propres assistants IA spécialisés ? (GPT personnalisé sur ChatGPT, Gem sur Gemini, Project ou Skill sur Claude, Agent sur Mistral…)",
+      options: [
+        { label: "Je ne sais pas ce que c'est", score: 0 },
+        { label: "J'en ai entendu parler, jamais essayé", score: 1 },
+        { label: "J'en ai créé 1 ou 2 pour tester", score: 2 },
+        { label: "J'en utilise plusieurs au quotidien, chacun avec un rôle précis", score: 3 }
+      ]
+    },
+    {
+      axe: "Outils IA",
+      text: "Comment donnez-vous vos instructions à l'IA au quotidien ?",
+      options: [
+        { label: "Je tape ma demande à la volée, en langage naturel", score: 0 },
+        { label: "J'ai quelques instructions que je réutilise de temps en temps", score: 1 },
+        { label: "Une bibliothèque d'instructions organisées par type de post", score: 2 },
+        { label: "Des assistants IA dédiés à chaque type de contenu", score: 3 }
+      ]
+    },
+    {
+      axe: "Qualité",
+      text: "Que faites-vous du texte généré par l'IA avant publication ?",
+      options: [
+        { label: "Je publie tel quel, ça gagne du temps", score: 0 },
+        { label: "Je change 1 ou 2 mots et je publie", score: 1 },
+        { label: "Je réécris 30 à 50 % du texte", score: 2 },
+        { label: "L'IA fait un brouillon, je réécris tout avec ma voix", score: 3 }
+      ]
+    },
+    {
+      axe: "Qualité",
+      text: "À quelle fréquence vos posts contiennent-ils les tics typiques de l'IA ? (« unlock », « game-changer », « dans un monde où », emoji en début de chaque ligne d'une liste…)",
+      options: [
+        { label: "Souvent, c'est l'IA qui écrit", score: 0 },
+        { label: "De temps en temps, je ne fais pas attention", score: 1 },
+        { label: "Rarement, j'y fais attention", score: 2 },
+        { label: "Jamais, je traque activement ces formules", score: 3 }
+      ]
+    },
+    {
+      axe: "Format",
+      text: "Travaillez-vous l'accroche (les 200 premiers caractères visibles dans le feed) séparément du reste du post ?",
+      options: [
+        { label: "Non, l'IA génère le post d'un bloc", score: 0 },
+        { label: "Je retouche l'accroche après coup", score: 1 },
+        { label: "Je demande à l'IA 3 à 5 variations d'accroche", score: 2 },
+        { label: "Process dédié : génération + sélection + test A/B", score: 3 }
+      ]
+    },
+    {
+      axe: "Format",
+      text: "Quels formats produisez-vous avec l'IA ?",
+      options: [
+        { label: "Uniquement des posts texte", score: 0 },
+        { label: "Texte + quelques carrousels", score: 1 },
+        { label: "Texte + carrousels + scripts vidéo", score: 2 },
+        { label: "Tous les formats + déclinaison multi-canal", score: 3 }
+      ]
+    },
+    {
+      axe: "Fréquence",
+      text: "Quelle est votre cadence et comment planifiez-vous vos publications ?",
+      options: [
+        { label: "Irrégulier, quand j'y pense", score: 0 },
+        { label: "1 à 2 posts par semaine, en manuel", score: 1 },
+        { label: "3+ posts par semaine, programmés", score: 2 },
+        { label: "5+ posts par semaine, calendrier éditorial complet", score: 3 }
+      ]
+    },
+    {
+      axe: "Mesure",
+      text: "Analysez-vous vos performances LinkedIn ?",
+      options: [
+        { label: "Non, je ne regarde pas les stats", score: 0 },
+        { label: "Je regarde vaguement, sans exploiter", score: 1 },
+        { label: "J'identifie mes top posts pour reproduire les formats gagnants", score: 2 },
+        { label: "J'utilise l'IA pour extraire les patterns de mes tops", score: 3 }
+      ]
+    },
+    {
+      axe: "Mesure",
+      text: "Mesurez-vous ce qui se passe après le post ? (clic vers votre profil → visite de votre site → prospect)",
+      options: [
+        { label: "Non, je vise uniquement les likes et commentaires", score: 0 },
+        { label: "Je regarde vaguement les stats LinkedIn", score: 1 },
+        { label: "J'utilise des liens traçables pour mesurer les visites de site", score: 2 },
+        { label: "Tracking complet : j'attribue mes prospects à mes posts", score: 3 }
+      ]
+    }
+  ];
+
+  // Recos per axis (keyed by weakness level)
+  const RECOS = {
+    "Stratégie": {
+      title: "Apprenez votre marque à l'IA, une fois pour toutes",
+      body: "Créez un GPT personnalisé (ou un Project Claude, ou une Gem Gemini) qui connaît par cœur votre client idéal, vos 3 grands thèmes, 10 posts référence qui vous ressemblent et votre ton de voix en 10 règles. Résultat : 60 % de temps en moins par post, et 2 fois plus de cohérence. C'est ce qui fait la différence entre l'amateur et le pro."
+    },
+    "Outils IA": {
+      title: "Passez de l'improvisation à la bibliothèque",
+      body: "Construisez 5 à 10 instructions-types par objectif : accroche, storytelling, post d'autorité, carrousel, post qui convertit. Chacune doit contenir le contexte, le rôle à jouer, la tâche précise, les contraintes, et 2 à 3 exemples. Vous arrêtez de redire la même chose à chaque fois. La qualité devient régulière."
+    },
+    "Qualité": {
+      title: "Éliminez le contenu générique que LinkedIn pénalise",
+      body: "LinkedIn détecte et déclasse les posts qui sentent l'IA à plein nez. Règle du 50 % : réécrivez au minimum la moitié du texte généré. Bannissez « unlock », « game-changer », « dans un monde où », les emoji en début de chaque ligne d'une liste, et les intros grandiloquentes. L'IA donne la structure, vous donnez la voix."
+    },
+    "Format": {
+      title: "Traitez l'accroche comme un livrable à part",
+      body: "L'accroche (les 200 premiers caractères visibles dans le feed) fait 80 % de la portée d'un post. Demandez systématiquement 5 variations à l'IA : curiosité, promesse, chiffre, contre-courant, histoire. Choisissez la plus forte. Diversifiez ensuite les formats : en B2B, les carrousels font en moyenne 3× plus de portée qu'un post texte."
+    },
+    "Fréquence": {
+      title: "Industrialisez la publication",
+      body: "En dessous de 3 posts par semaine, l'algorithme LinkedIn ne vous connaît pas. Objectif : 3 à 5 posts par semaine, programmés à l'avance (avec Taplio, Buffer, ou l'outil de programmation intégré à LinkedIn). Planifiez un mois d'avance. La régularité bat le génie ponctuel."
+    },
+    "Mesure": {
+      title: "Fermez la boucle avec l'analyse IA",
+      body: "Une fois par mois, exportez vos 20 derniers posts et demandez à l'IA : « Trouve les points communs entre mes 5 meilleurs posts et les 5 qui ont floppé. » Vous décelez ce que votre audience veut vraiment. Ajoutez ensuite des liens traçables sur ce que vous partagez. Vous mesurez alors le parcours complet : vu sur LinkedIn, visite du profil, visite du site, prospect."
+    }
+  };
+
+  const PROFILES = [
+    {
+      min: 0, max: 33,
+      eyebrow: "Profil · Utilisateur occasionnel",
+      title: "Vous êtes dans les 60 % qui utilisent l'IA sans méthode.",
+      verdict: "Bonne nouvelle : le potentiel d'amélioration est énorme. En activant 2 ou 3 leviers fondamentaux, vous pouvez doubler votre impact sur LinkedIn en 60 jours, sans publier plus."
+    },
+    {
+      min: 34, max: 55,
+      eyebrow: "Profil · Utilisateur régulier",
+      title: "Vous êtes dans les 25 % qui ont commencé à structurer.",
+      verdict: "Vous avez dépassé l'utilisation amateur, mais vous laissez encore environ 50 % du rendement sur la table. Le passage au palier supérieur se joue sur 3 leviers précis."
+    },
+    {
+      min: 56, max: 77,
+      eyebrow: "Profil · Utilisateur avancé",
+      title: "Top 15 %. Vous avez un système. Reste à le peaufiner.",
+      verdict: "Vous avez une longueur d'avance sur la grande majorité du marché. Les gains sont désormais marginaux mais cumulatifs : 1 à 2 optimisations clés peuvent vous faire basculer dans le top 5 %."
+    },
+    {
+      min: 78, max: 100,
+      eyebrow: "Profil · Power user · Top 5 %",
+      title: "Vous êtes dans l'élite IA × LinkedIn.",
+      verdict: "Félicitations : vous faites partie des 5 % qui exploitent réellement l'IA. Les vrais sujets sont désormais la scalabilité, la déclinaison multi-canal et l'orchestration d'agents. On parle ?"
+    }
+  ];
+
+  /* =========================================================
+     STATE & LOGIC
+  ========================================================= */
+
+  const state = {
+    current: 0,
+    answers: new Array(QUESTIONS.length).fill(null),
+  };
+
+  function startDiagnostic() {
+    state.current = 0;
+    state.answers = new Array(QUESTIONS.length).fill(null);
+    showView("view-questions");
+    renderQuestion();
+  }
+
+  function restartDiagnostic() {
+    window.scrollTo({ top: 0, behavior: "instant" });
+    startDiagnostic();
+  }
+
+  function showView(id) {
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function renderQuestion() {
+    const q = QUESTIONS[state.current];
+    document.getElementById("q-current").textContent = state.current + 1;
+    document.getElementById("q-total").textContent = QUESTIONS.length;
+    document.getElementById("q-axe-label").textContent = q.axe;
+    document.getElementById("q-text").textContent = q.text;
+
+    const progress = ((state.current) / QUESTIONS.length) * 100;
+    document.getElementById("progress-bar").style.width = progress + "%";
+
+    const container = document.getElementById("q-options");
+    container.innerHTML = "";
+    q.options.forEach((opt, idx) => {
+      const div = document.createElement("div");
+      const isSelected = state.answers[state.current] === idx;
+      div.className = "option p-5 flex items-start gap-4 text-[16px] md:text-[17px] leading-snug" + (isSelected ? " selected" : "");
+      div.innerHTML = `
+        <span class="option-marker mt-1"></span>
+        <span class="flex-1">${opt.label}</span>
+      `;
+      div.addEventListener("click", () => answerQuestion(idx));
+      container.appendChild(div);
+    });
+
+    document.getElementById("btn-back").style.visibility = state.current === 0 ? "hidden" : "visible";
+  }
+
+  function answerQuestion(optionIdx) {
+    state.answers[state.current] = optionIdx;
+    // Visual feedback: highlight selected card
+    const cards = document.querySelectorAll("#q-options .option");
+    cards.forEach((c, i) => c.classList.toggle("selected", i === optionIdx));
+
+    setTimeout(() => {
+      if (state.current < QUESTIONS.length - 1) {
+        state.current++;
+        renderQuestion();
+      } else {
+        // done -> results
+        document.getElementById("progress-bar").style.width = "100%";
+        setTimeout(showResults, 300);
+      }
+    }, 280);
+  }
+
+  function goBack() {
+    if (state.current > 0) {
+      state.current--;
+      renderQuestion();
+    }
+  }
+
+  /* =========================================================
+     RESULTS
+  ========================================================= */
+
+  function computeScores() {
+    // per-axis totals
+    const axisMax = {};
+    const axisScore = {};
+    AXES.forEach(a => { axisMax[a] = 0; axisScore[a] = 0; });
+    QUESTIONS.forEach((q, i) => {
+      axisMax[q.axe] += 3;
+      const ans = state.answers[i];
+      axisScore[q.axe] += (ans !== null ? q.options[ans].score : 0);
+    });
+    const total = Object.values(axisScore).reduce((a, b) => a + b, 0);
+    const max = Object.values(axisMax).reduce((a, b) => a + b, 0);
+    const pct = Math.round((total / max) * 100);
+    return { axisScore, axisMax, pct };
+  }
+
+  function getProfile(pct) {
+    return PROFILES.find(p => pct >= p.min && pct <= p.max) || PROFILES[0];
+  }
+
+  function pickTop3Weakest(axisScore, axisMax) {
+    // Compute per-axis pct and pick 3 lowest
+    const entries = AXES.map(a => ({
+      axe: a,
+      pct: axisScore[a] / axisMax[a]
+    }));
+    entries.sort((x, y) => x.pct - y.pct);
+    return entries.slice(0, 3).map(e => e.axe);
+  }
+
+  function showResults() {
+    const { axisScore, axisMax, pct } = computeScores();
+    const profile = getProfile(pct);
+    const weakest = pickTop3Weakest(axisScore, axisMax);
+
+    // Fill profile
+    document.getElementById("profile-eyebrow").textContent = profile.eyebrow;
+    document.getElementById("profile-title").textContent = profile.title;
+    document.getElementById("profile-verdict").textContent = profile.verdict;
+
+    // Fill leviers
+    const leviersBox = document.getElementById("leviers");
+    leviersBox.innerHTML = "";
+    weakest.forEach((axe, i) => {
+      const r = RECOS[axe];
+      const card = document.createElement("div");
+      card.className = "levier p-6";
+      card.innerHTML = `
+        <div class="levier-num mb-3">0${i + 1}</div>
+        <div class="eyebrow mb-2">Axe · ${axe}</div>
+        <h4 class="font-serif text-xl leading-tight tracking-tight mb-3">${r.title}</h4>
+        <p class="ink-2 text-[15px] leading-relaxed">${r.body}</p>
+      `;
+      leviersBox.appendChild(card);
+    });
+
+    // Ambition marker
+    document.getElementById("ambition-marker").style.left = Math.min(pct, 98) + "%";
+
+    // Radar chart
+    renderRadar(axisScore);
+
+    showView("view-results");
+
+    // animate %
+    animateNumber(document.getElementById("score-number"), 0, pct, 1100);
+  }
+
+  function animateNumber(el, from, to, duration) {
+    const start = performance.now();
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = Math.round(from + (to - from) * eased);
+      if (t < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  let radarInstance = null;
+  function renderRadar(axisScore) {
+    const ctx = document.getElementById("radar-chart").getContext("2d");
+    if (radarInstance) radarInstance.destroy();
+
+    // Normalize each axis to 0..3 regardless of how many questions it has
+    const axisMax = {};
+    AXES.forEach(a => axisMax[a] = 0);
+    QUESTIONS.forEach(q => { axisMax[q.axe] += 3; });
+    const normalized = AXES.map(a => (axisScore[a] / axisMax[a]) * 3);
+
+    radarInstance = new Chart(ctx, {
+      type: "radar",
+      data: {
+        labels: AXES,
+        datasets: [{
+          label: "Votre score",
+          data: normalized,
+          backgroundColor: "rgba(217, 63, 28, 0.15)",
+          borderColor: "#d93f1c",
+          borderWidth: 2,
+          pointBackgroundColor: "#d93f1c",
+          pointBorderColor: "#fff",
+          pointRadius: 4,
+          pointHoverRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            min: 0,
+            max: 3,
+            ticks: { display: false, stepSize: 1 },
+            grid: { color: "#e6e0d4" },
+            angleLines: { color: "#e6e0d4" },
+            pointLabels: {
+              font: { family: "Figtree", size: 12, weight: "500" },
+              color: "#3a3a36"
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.parsed.r.toFixed(1)} / 3`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function shareResult() {
+    const { pct } = computeScores();
+    const profile = getProfile(pct);
+    const text = `J'ai fait le Diagnostic IA × LinkedIn de @We Do It Better : ${pct}%, ${profile.eyebrow.replace("Profil · ", "")}. Faites le vôtre :`;
+    const url = window.location.href;
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}&summary=${encodeURIComponent(text)}`, "_blank");
+  }
+
+  </script>
+</body>
+</html>
