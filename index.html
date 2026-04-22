@@ -347,14 +347,17 @@
                 On travaille exclusivement avec Claude, que nous considérons comme l'IA la plus précise pour l'écriture B2B aujourd'hui. Et on ne se contente pas de vous livrer un prompt ou un document. On s'assoit avec vous, on comprend votre marque de fond en comble, et on construit tout : un Project Claude nourri de votre identité, une bibliothèque d'instructions pour chaque format de post, un calendrier éditorial programmé, un tableau de mesure. Puis on forme votre équipe pour qu'elle reprenne la main. En 30 jours, votre système tourne seul. Et vous savez enfin ce qui marche.
               </p>
               <div class="flex flex-wrap gap-4">
-                <a href="mailto:sebastien.t@we-do-it.fr?subject=Diagnostic%20IA%20LinkedIn%20-%20Demande%20d'audit%20approfondi&amp;body=Bonjour%20S%C3%A9bastien%2C%0A%0AJ'ai%20r%C3%A9alis%C3%A9%20le%20diagnostic%20IA%20x%20LinkedIn%20et%20j'aimerais%20en%20discuter%20avec%20vous.%0A%0AVoici%20quelques%20infos%20sur%20mon%20contexte%20%3A%0A-%20Entreprise%20%3A%0A-%20Mon%20r%C3%B4le%20%3A%0A-%20Score%20obtenu%20%3A%0A-%20Ce%20qui%20m'int%C3%A9resse%20le%20plus%20%3A%0A%0A%C3%80%20bient%C3%B4t%2C" class="btn-primary" style="background: var(--accent); color: #fff;">
-                  Demander un audit approfondi
+                <button type="button" onclick="copyContactInfo(this)" class="btn-primary" style="background: var(--accent); color: #fff; border: none; cursor: pointer; font-family: inherit; font-size: inherit;">
+                  <span class="btn-label">Demander un audit approfondi</span>
                   <span>→</span>
-                </a>
+                </button>
                 <a href="https://we-do-it-better.fr" class="btn-outline" style="border-color: #fff; color: #fff;">
                   Découvrir We Do It Better
                 </a>
               </div>
+              <p id="copy-hint" class="mt-4 text-sm" style="color: #b9b5ab; min-height: 22px;">
+                Un clic copie l'email de Sébastien et un message pré-rédigé. Collez-les dans votre messagerie.
+              </p>
             </div>
           </div>
         </div>
@@ -763,6 +766,59 @@
         }
       }
     });
+  }
+
+  function copyContactInfo(btn) {
+    const { pct } = computeScores();
+    const profile = getProfile(pct).eyebrow.replace("Profil · ", "");
+    const email = "sebastien.t@we-do-it.fr";
+    const message =
+      "À : " + email + "\n" +
+      "Objet : Diagnostic IA LinkedIn - Demande d'audit approfondi\n\n" +
+      "Bonjour Sébastien,\n\n" +
+      "J'ai réalisé le diagnostic IA x LinkedIn et j'aimerais en discuter avec vous.\n\n" +
+      "Mon score : " + pct + "% (" + profile + ")\n\n" +
+      "Voici quelques infos sur mon contexte :\n" +
+      "- Entreprise :\n" +
+      "- Mon rôle :\n" +
+      "- Ce qui m'intéresse le plus :\n\n" +
+      "À bientôt,";
+
+    const label = btn.querySelector(".btn-label");
+    const hint = document.getElementById("copy-hint");
+    const originalLabel = label.textContent;
+
+    const showSuccess = () => {
+      label.textContent = "Copié ✓";
+      btn.style.background = "#111110";
+      if (hint) {
+        hint.innerHTML = 'Tout est dans votre presse-papier. Collez dans Gmail, Outlook ou Mail. <a href="mailto:' + email + '" style="color:#fff;text-decoration:underline;">Ou cliquez ici pour tenter l\'ouverture automatique</a>.';
+      }
+      setTimeout(() => {
+        label.textContent = originalLabel;
+        btn.style.background = "var(--accent)";
+      }, 4000);
+    };
+
+    const fallback = () => {
+      const ta = document.createElement("textarea");
+      ta.value = message;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); showSuccess(); }
+      catch (e) {
+        if (hint) hint.textContent = "Copie impossible. Écrivez à " + email;
+      }
+      document.body.removeChild(ta);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(message).then(showSuccess).catch(fallback);
+    } else {
+      fallback();
+    }
   }
 
   function shareResult() {
